@@ -1,0 +1,66 @@
+version: '3'
+
+volumes:
+  mysql_data:
+      driver: local
+
+services:
+  mysql:
+      image: mysql:latest
+      container_name: opub-db-mysql
+      volumes:
+        - mysql_data:/var/lib/mysql
+      environment:
+        MYSQL_ROOT_PASSWORD: root
+        MYSQL_DATABASE: keycloak
+        MYSQL_USER: keycloak
+        MYSQL_PASSWORD: password
+  
+  keycloak:
+      image: quay.io/keycloak/keycloak:legacy
+      container_name: opub-auth-kc
+      # volumes:
+      # - ./imports:/opt/jboss/keycloak/imports
+      # command: 
+      # - "-b 0.0.0.0 -D keycloak.import=/opt/jboss/keycloak/imports/realm-export.json"
+      environment:
+        DB_VENDOR: MYSQL
+        DB_ADDR: mysql
+        DB_DATABASE: keycloak
+        DB_USER: keycloak
+        DB_PASSWORD: password
+        KEYCLOAK_USER: admin
+        KEYCLOAK_PASSWORD: Pa55w0rd
+        # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the MySQL JDBC driver documentation in order to use it.
+        #JDBC_PARAMS: "connectTimeout=30000"
+      ports:
+        - 8080:8080
+      depends_on:
+        - mysql
+  
+  # strapi:
+  #   container_name: strapi
+  #   image: strapi/strapi
+  #   ports:
+  #     - 1337:1337
+  #   volumes:
+  #     - ./app:/srv/app
+  #   command: 'strapi start'
+
+  next_app:
+      image: node:alpine
+      container_name: opub-next-js-app
+      build: 
+        context: .
+      command: >
+        bash -c "mkdir -p /usr/src/app &&
+              cd /usr/src/app &&
+              apk add --no-cache git && 
+              git clone https://github.com/CivicDataLab/opub.git &&
+              cd opub &&
+              npm run install &&
+              npm run build"
+      ports:
+        - 3000:3000
+      entrypoint: ["npm","start"]
+  
