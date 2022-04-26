@@ -1,20 +1,20 @@
 version: '3'
 
-volumes:
-  mysql_data:
-      driver: local
+# volumes:
+#   mysql_data:
+#       driver: local
 
 services:
   mysql:
       image: mysql:latest
       container_name: opub-db-mysql
-      volumes:
-        - mysql_data:/var/lib/mysql
+      # volumes:
+      #   - ./mysql-config:/docker-entrypoint-initdb.d
       environment:
         MYSQL_ROOT_PASSWORD: root
-        MYSQL_DATABASE: keycloak
-        MYSQL_USER: keycloak
-        MYSQL_PASSWORD: password
+        # MYSQL_DATABASE: keycloak
+        # MYSQL_USER: keycloak
+        # MYSQL_PASSWORD: password
   
   keycloak:
       image: quay.io/keycloak/keycloak:legacy
@@ -27,8 +27,8 @@ services:
         DB_VENDOR: MYSQL
         DB_ADDR: mysql
         DB_DATABASE: keycloak
-        DB_USER: keycloak
-        DB_PASSWORD: password
+        DB_USER: root
+        DB_PASSWORD: root
         KEYCLOAK_USER: admin
         KEYCLOAK_PASSWORD: Pa55w0rd
         # Uncomment the line below if you want to specify JDBC parameters. The parameter below is just an example, and it shouldn't be used in production without knowledge. It is highly recommended that you read the MySQL JDBC driver documentation in order to use it.
@@ -38,29 +38,38 @@ services:
       depends_on:
         - mysql
   
-  # strapi:
-  #   container_name: strapi
-  #   image: strapi/strapi
-  #   ports:
-  #     - 1337:1337
-  #   volumes:
-  #     - ./app:/srv/app
-  #   command: 'strapi start'
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: strapi
+      POSTGRES_USER: strapi
+      POSTGRES_PASSWORD: strapi
+    # volumes:
+    #   - ./data:/var/lib/postgresql/data
 
+  strapi:
+    image: strapi/strapi:latest
+    environment:
+      DATABASE_CLIENT: postgres
+      DATABASE_NAME: strapi
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USERNAME: strapi
+      DATABASE_PASSWORD: strapi
+    volumes:
+      - ./app:/srv/app
+    ports:
+      - '1337:1337'
+    depends_on:
+      - postgres
+      
   next_app:
       image: node:alpine
       container_name: opub-next-js-app
-      build: 
-        context: .
-      command: >
-        bash -c "mkdir -p /usr/src/app &&
-              cd /usr/src/app &&
-              apk add --no-cache git && 
-              git clone https://github.com/CivicDataLab/opub.git &&
-              cd opub &&
-              npm run install &&
-              npm run build"
+      build:
+        # Refering to docker branch of the OPUB repo
+        context: https://github.com/CivicDataLab/opub.git#docker
+        # dockerfile: Dockerfile
       ports:
         - 3000:3000
-      entrypoint: ["npm","start"]
   
